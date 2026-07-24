@@ -1,18 +1,45 @@
-name: Build and Push
+name: Build and Push to ACR
+
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+
 jobs:
   build:
+
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: azure/login@v2
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-      - run: az acr login --name tarekacr001
-      - run: docker build -t tarekacr001.azurecr.io/demo:latest app/
-      - run: docker push tarekacr001.azurecr.io/demo:latest
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        run: az acr login --name tarekacr001
+
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -t tarekacr001.azurecr.io/demo:${{ github.sha }} \
+            -t tarekacr001.azurecr.io/demo:latest \
+            ./app
+
+      - name: Push Latest
+        run: |
+          docker push tarekacr001.azurecr.io/demo:latest
+
+      - name: Push Version
+        run: |
+          docker push tarekacr001.azurecr.io/demo:${{ github.sha }}
+
+      - name: Show Repositories
+        run: |
+          az acr repository list \
+            --name tarekacr001 \
+            --output table
